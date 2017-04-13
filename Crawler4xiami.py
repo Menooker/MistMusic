@@ -13,6 +13,11 @@ import sys
 import HTMLParser
 import json
 
+import MySQLdb
+import traceback
+
+
+
 h = HTMLParser.HTMLParser()
 def get_id(mstr):
 	#print(mstr)
@@ -29,9 +34,45 @@ def html2str(lyc):
 	lyc=lyc.replace("<strong>","")	
 	return lyc
 
-def parse_song_page(songid):
+def sqlwrite_batch(db,command,data):
+	try:
+		cursor = db.cursor()
+		cursor.executemany(command,data)		
+		db.commit()
+	except MySQLdb.IntegrityError as e:
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
+		if e.args[0] != 1062:
+			return False
+	except Exception as e:
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
+		return False
+	finally:
+		cursor.close()
+	return True
+
+def sqlwrite(db,command,data):
+	try:
+		cursor = db.cursor()
+		cursor.execute(command,data)		
+		db.commit()
+	except MySQLdb.IntegrityError as e:
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
+		if e.args[0] != 1062:
+			return False
+	except Exception as e:
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
+		return False
+	finally:
+		cursor.close()
+	return True
+
+def parse_song_page(db,songid):
 	if CrawlerCore.check_xiami_song(songid):
-		return True
+		return 1
 
 	title,albumId,artistId,downurl=xiami.get_song_full_info(str(songid))
 
@@ -84,12 +125,14 @@ def parse_song_page(songid):
 	print ("Song: %s, play= %d , comment= %d" % (title,play_cnt,comment_cnt))
 	CrawlerCore.enqueue_album(albumId)
 	CrawlerCore.enqueue_artist(artistId)
-
+	
+	if not sqlwrite(db,"insert into music(id,name,lyc,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s)",(songid,title,lyc,play_cnt,comment_cnt)):
+		return 2
 	CrawlerCore.register_song(songid,downurl)
-	return False
+	return 0
 
 
-def parse_album_page(albumid):
+def parse_album_page(db,albumid):
 	if CrawlerCore.check_xiami_album(albumid):
 		return
 	tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/1" % albumid)
@@ -103,9 +146,9 @@ def parse_album_page(albumid):
 	songs =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:songId',namespaces={"xm": 'http://xspf.org/ns/0/'})
 	songslist = [0] * len(songs)
 	for i in range(len(songs)):
-		songslist[i]=int(songs[i].text)
+		songslist[i]=(int(songs[i].text),albumid,i+1)
 		#write song-album pair
-		CrawlerCore.enqueue_song(songslist[i])
+		CrawlerCore.enqueue_song(songslist[i][0])
 
 	session = requests.Session()
 	session.headers = {
@@ -154,10 +197,17 @@ def parse_album_page(albumid):
 		sys.stderr.write("album %d no photo\n" % albumid)
 
 	print ("album: %s, play= %d , comment= %d" % (albumName,play_cnt,comment_cnt))
-	#write album and album-artist pair 
+	#write album and album-artist pair
+	if not sqlwrite(db,"insert into album(id,name,description,pic,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s,%s)",(albumid,albumName,des,picurl,play_cnt,comment_cnt)):
+		return 2
+	if not sqlwrite_batch(db,"insert into music_album (music_id,album_id,morder) values(%s,%s,%s)",songslist):
+		return 2
+	if not sqlwrite(db,"insert into album_artist (artist_id,album_id) values(%s,%s)",(int(artist),albumid)):
+		return 2	
 	CrawlerCore.register_album(albumid)
+	return 0
 
-def parse_artist_page(artistid):
+def parse_artist_page(db,artistid):
 	if CrawlerCore.check_xiami_artist(artistid):
 		return
 	tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/2" % artistid)
@@ -210,30 +260,39 @@ def parse_artist_page(artistid):
 	else:
 		sys.stderr.write("artist %d no playcount\n" % artistid)
 	print ("artist: %s, play= %d , comment= %d" % (artistName,play_cnt,comment_cnt))
+	if not sqlwrite(db,"insert into artist(id,name,description,pic,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s,%s)",(artistid,artistName,des,picurl,play_cnt,comment_cnt)):
+		return 2
 	CrawlerCore.register_artist(artistid)
+	return 1
 
 def worker():
+	db = MySQLdb.connect("localhost","root","thisismysql","mistmusic")
+	db.set_character_set('utf8')
 	while True:
 		if CrawlerCore.is_canceled: 
 			return
 		try:
 			task = CrawlerCore.dequeue()
 			if task[0]==0:
-				should_redo=parse_song_page(task[1])
-				CrawlerCore.done_song(task[1])
-				if should_redo:
+				ret=parse_song_page(db,task[1])
+				if ret!=2:
+					CrawlerCore.done_song(task[1])
+				if ret==1:
 					continue
 			elif  task[0]==1:
-				parse_album_page(task[1])
-				CrawlerCore.done_album(task[1])		
+				ret=parse_album_page(db,task[1])
+				if ret!=2:
+					CrawlerCore.done_album(task[1])	
 			elif  task[0]==2:
-				parse_artist_page(task[1])
-				CrawlerCore.done_artist(task[1])
+				ret=parse_artist_page(db,task[1])
+				if ret!=2:
+					CrawlerCore.done_artist(task[1])
 		except Exception as e:
-			sys.stderr.write(e.__doc__+"\n")
-			sys.stderr.write(e.message+"\n")
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
 		else:
-			time.sleep(4.5)
+			time.sleep(5)
+	db.close()	
 
 
 def aaa():

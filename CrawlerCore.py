@@ -5,6 +5,7 @@ import threading
 
 import os.path
 
+
 song_id_set=set()
 song_id_lock=threading.Lock()
 
@@ -32,6 +33,7 @@ from time import gmtime, strftime
 
 out_url_file_time=strftime("%Y%m%d-%H-%M-%S", gmtime())
 out_url_file=open("outdir/mp3_url_%s_%d.txt" % (out_url_file_time,0),"w")
+
 
 
 def init_cache():

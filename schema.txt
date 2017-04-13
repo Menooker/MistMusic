@@ -1,4 +1,20 @@
-create table artist (id int unsigned primary key, name varchar(50), discription varchar(2000) , pic varchar(100));
+SET NAMES utf8;
 
-create table album (id int unsigned primary key, name varchar(50), discription varchar(2000) , pic varchar(100));
-create table album_artist (artist_id int unsigned,album_id  int unsigned, FOREIGN KEY (artist_id) references artist(id), FOREIGN KEY (album_id) references album(id), primary key (artist_id,album_id));
+SET character_set_connection=utf8;
+
+SET CHARACTER SET utf8;
+
+create database mistmusic default character set utf8 collate utf8_general_ci;
+
+use mistmusic;
+
+create table artist (id int unsigned primary key, name varchar(70), description varchar(32000) , pic varchar(200),play_cnt int, comment_cnt int);
+
+create table album (id int unsigned primary key, name varchar(70), description varchar(32000) , pic varchar(200),play_cnt int, comment_cnt int);
+
+create table music (id int unsigned primary key, name varchar(70), lyc varchar(16000) ,play_cnt int, comment_cnt int);
+
+create table album_artist (artist_id int unsigned,album_id  int unsigned,  primary key (artist_id,album_id));
+#FOREIGN KEY (artist_id) references artist(id), FOREIGN KEY (album_id) references album(id),
+create table music_album (music_id int unsigned,album_id  int unsigned, morder int unsigned, primary key (music_id,album_id));
+#  FOREIGN KEY (music_id) references music(id), FOREIGN KEY (album_id) references album(id),
