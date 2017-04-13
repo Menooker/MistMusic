@@ -1,0 +1,4 @@
+create table artist (id int unsigned primary key, name varchar(50), discription varchar(2000) , pic varchar(100));
+
+create table album (id int unsigned primary key, name varchar(50), discription varchar(2000) , pic varchar(100));
+create table album_artist (artist_id int unsigned,album_id  int unsigned, FOREIGN KEY (artist_id) references artist(id), FOREIGN KEY (album_id) references album(id), primary key (artist_id,album_id));
