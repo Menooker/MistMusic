@@ -218,7 +218,7 @@ def parse_artist_page(db,artistid):
 	artistName = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:singers',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
 	songs =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:songId',namespaces={"xm": 'http://xspf.org/ns/0/'})
 	songslist = [0] * len(songs)
-	for i in range(len(songs)):
+	for i in range(min(len(songs),30)):
 		songslist[i]=int(songs[i].text)
 		CrawlerCore.enqueue_song(songslist[i])
 
@@ -268,7 +268,20 @@ def parse_artist_page(db,artistid):
 def worker():
 	db = MySQLdb.connect("localhost","root","thisismysql","mistmusic")
 	db.set_character_set('utf8')
+	err_cnt=0
+	cycle_num=0
 	while True:
+		if CrawlerCore.is_canceled: 
+			return
+		cycle_num+=1
+		if cycle_num == 10:
+			if err_cnt>=9:
+				print "too many errors, now sleep"
+				time.sleep(240)
+			else:
+				time.sleep(10)
+			cycle_num=0
+			err_cnt=0
 		if CrawlerCore.is_canceled: 
 			return
 		try:
@@ -288,10 +301,10 @@ def worker():
 				if ret!=2:
 					CrawlerCore.done_artist(task[1])
 		except Exception as e:
+			err_cnt+=1
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
-		else:
-			time.sleep(5)
+		time.sleep(5)
 	db.close()	
 
 
