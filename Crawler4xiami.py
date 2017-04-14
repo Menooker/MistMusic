@@ -266,6 +266,7 @@ def parse_artist_page(db,artistid):
 	return 1
 
 def worker():
+	global db
 	db = MySQLdb.connect("localhost","root","thisismysql","mistmusic")
 	db.set_character_set('utf8')
 	while True:
@@ -287,6 +288,10 @@ def worker():
 				ret=parse_artist_page(db,task[1])
 				if ret!=2:
 					CrawlerCore.done_artist(task[1])
+			elif  task[0]==-1:
+				return
+			elif  task[0]==-2:
+				continue
 		except Exception as e:
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
