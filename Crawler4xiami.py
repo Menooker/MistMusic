@@ -287,6 +287,7 @@ def worker():
 			err_cnt=0
 		if CrawlerCore.is_canceled: 
 			return
+		task=0
 		try:
 			task = CrawlerCore.dequeue()
 			if task[0]==0:
@@ -311,6 +312,7 @@ def worker():
 			err_cnt+=1
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
+			CrawlerCore.bad_task(task)
 		finally:
 			CrawlerCore.done_task(task)
 		time.sleep(5)

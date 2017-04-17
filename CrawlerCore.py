@@ -18,6 +18,7 @@ artist_id_lock=threading.Lock()
 file_song_queue=0#open("song_queue.txt","a+")
 file_song_queue_head=0#open("song_queue.txt","a+")
 file_read_queue=0
+file_bad_task=open("outdir/bad_task.txt","a+")
 artist_file=0
 album_file=0
 
@@ -26,6 +27,7 @@ count=0
 filecount=0
 count_lock=threading.Lock()
 queue_lock=threading.Lock()
+bad_task_lock=threading.Lock()
 is_canceled=False
 
 from time import gmtime, strftime
@@ -175,7 +177,6 @@ def done_song(xiami_id):
 		file_song_queue_head.write("%d\n" % xiami_id)
 		file_song_queue_head.flush()
 
-
 def cancel():
 	global is_canceled
 	is_canceled=True
@@ -211,3 +212,12 @@ def done_task(t):
 	with queue_lock:
 		if t in working_queue:
 			working_queue.remove(t)
+
+def bad_task(t):
+	if t==0:
+		return
+	done_proc=[done_song,done_album,done_artist]
+	done_proc[t[0]](t[1])
+	with bad_task_lock:	
+		file_bad_task.write("%d %d\n" % t)
+		file_bad_task.flush()
