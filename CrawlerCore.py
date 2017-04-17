@@ -87,12 +87,12 @@ def init_cache():
 	print("Read cache done")
 init_cache()
 
-def register_song(xiami_id,url):
+def register_song(xiami_id,play_cnt,url):
 	global out_url_file,out_url_file_time,count,filecount
 	#write some DB
 	with song_id_lock:
 		count+=1
-		out_url_file.write("%d %s\n" % (xiami_id,url))
+		out_url_file.write("%d %d %s\n" % (xiami_id,play_cnt,url))
 		out_url_file.flush()
 		if count % 500==0:
 			out_url_file.close()
@@ -173,9 +173,7 @@ def dequeue():
 def done_song(xiami_id):
 	with queue_lock:
 		file_song_queue_head.write("%d\n" % xiami_id)
-		file_song_queue_head.flush()	
-		if (0,xiami_id) in working_queue:
-			working_queue.remove((0,xiami_id))
+		file_song_queue_head.flush()
 
 
 def cancel():
@@ -195,8 +193,6 @@ def done_album(xiami_id):
 	with queue_lock:
 		album_file.write("%d\n" % xiami_id)
 		album_file.flush()
-		if (1,xiami_id) in working_queue:
-			working_queue.remove((1,xiami_id))
 
 def enqueue_artist(xiami_id):
 	if check_xiami_artist(xiami_id):
@@ -211,5 +207,7 @@ def done_artist(xiami_id):
 	with queue_lock:
 		artist_file.write("%d\n" % xiami_id)
 		artist_file.flush()
-		if (2,xiami_id) in working_queue:
-			working_queue.remove((2,xiami_id))
+def done_task(t):
+	with queue_lock:
+		if t in working_queue:
+			working_queue.remove(t)

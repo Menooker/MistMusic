@@ -125,10 +125,13 @@ def parse_song_page(db,songid):
 	print ("Song: %s, play= %d , comment= %d" % (title,play_cnt,comment_cnt))
 	CrawlerCore.enqueue_album(albumId)
 	CrawlerCore.enqueue_artist(artistId)
+
+	if not sqlwrite(db,"insert into music_artist(music_id,artist_id) values(%s,%s)",(songid,artistId)):
+		return 2
 	
 	if not sqlwrite(db,"insert into music(id,name,lyc,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s)",(songid,title,lyc,play_cnt,comment_cnt)):
 		return 2
-	CrawlerCore.register_song(songid,downurl)
+	CrawlerCore.register_song(songid,play_cnt,downurl)
 	return 0
 
 
@@ -266,7 +269,6 @@ def parse_artist_page(db,artistid):
 	return 1
 
 def worker():
-	global db
 	db = MySQLdb.connect("localhost","root","thisismysql","mistmusic")
 	db.set_character_set('utf8')
 	err_cnt=0
@@ -309,6 +311,8 @@ def worker():
 			err_cnt+=1
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
+		finally:
+			CrawlerCore.done_task(task)
 		time.sleep(5)
 	db.close()	
 
