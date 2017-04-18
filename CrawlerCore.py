@@ -75,7 +75,7 @@ def init_cache():
 				if mid in album_id_set:
 					continue
 			elif mtype==2:
-				if mid in artist_file:
+				if mid in artist_id_set:
 					continue
 			temp_file.write(line)
 		old_file.close()

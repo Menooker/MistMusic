@@ -271,6 +271,7 @@ def parse_artist_page(db,artistid):
 def worker():
 	db = MySQLdb.connect("localhost","root","thisismysql","mistmusic")
 	db.set_character_set('utf8')
+	print("Open MySQL ok")
 	err_cnt=0
 	cycle_num=0
 	while True:
