@@ -33,7 +33,8 @@ for path,dirname,filenames in os.walk("outdir"):
 				fn="mp3/%s.mp3" % sid
 				if not os.path.exists(fn):
 					try:
-						urllib.urlretrieve(url, fn)
+						urllib.urlretrieve(url, "mp3/temp.mp3")
+						os.rename("mp3/temp.mp3",fn)
 						print(sid)
 					except Exception as e:
 						exc_type, exc_value, exc_traceback = sys.exc_info()

@@ -6,6 +6,7 @@ import threading
 import os.path
 import time
 
+close_mode=False
 song_id_set=set()
 song_id_lock=threading.Lock()
 
@@ -164,6 +165,9 @@ def dequeue():
 			print ("Line is "+line+". Queue may be empty. Now sleep")
 			time.sleep(10)
 		tsk=(int(kv[0]),int(kv[1]))
+		if close_mode:
+			if tsk[0]==0:
+				return (-2,0)
 		if tsk in working_queue:
 			return (-2,0)
 		checking=[check_xiami_song,check_xiami_album,check_xiami_artist]
@@ -221,3 +225,4 @@ def bad_task(t):
 	with bad_task_lock:	
 		file_bad_task.write("%d %d\n" % t)
 		file_bad_task.flush()
+

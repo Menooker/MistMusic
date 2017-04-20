@@ -3,6 +3,11 @@
 import Crawler4xiami
 import CrawlerCore
 import threading
+import sys
+
+if len(sys.argv)==2:
+       if sys.argv[1]=='close':
+               CrawlerCore.close_mode=True
 
 CrawlerCore.put_song(380246)#小手拉大手
 CrawlerCore.put_song(130762)#后来
