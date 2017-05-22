@@ -93,6 +93,7 @@ def init_cache():
 init_cache()
 
 def recrawl():
+	global recrawl_mode,close_mode
 	recrawl_mode=True
 	close_mode=True
 	done_kv=set()
@@ -247,6 +248,7 @@ def done_artist(xiami_id):
 	with queue_lock:
 		artist_file.write("%d\n" % xiami_id)
 		artist_file.flush()
+		print recrawl_mode
 		if recrawl_mode:
 			file_bad_task_done.write("2 %d\n" % xiami_id)
 			file_bad_task_done.flush()

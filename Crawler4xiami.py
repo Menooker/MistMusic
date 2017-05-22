@@ -289,7 +289,7 @@ def parse_artist_page(db,artistid):
 	if elem is not None:
 		picurl= elem.attrib["src"]
 	else:
-		sys.stderr.write("artist %d no photo\n" % albumid)
+		sys.stderr.write("artist %d no photo\n" % artistid)
 	elem=tree.find('.//div[@id="title"]/h1')
 	artistName=""
 	if elem is not None:
