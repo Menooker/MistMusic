@@ -39,10 +39,12 @@ def sqlwrite_batch(db,command,data):
 		cursor = db.cursor()
 		cursor.executemany(command,data)		
 		db.commit()
-	except MySQLdb.IntegrityError as e:
-		exc_type, exc_value, exc_traceback = sys.exc_info()
-		traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
-		if e.args[0] != 1062:
+	except MySQLdb.IntegrityError as e:	
+		if e.args[0] == 1062:
+			print("duplicate data",command,data)
+		else:
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
 			return False
 	except Exception as e:
 		exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -58,9 +60,11 @@ def sqlwrite(db,command,data):
 		cursor.execute(command,data)		
 		db.commit()
 	except MySQLdb.IntegrityError as e:
-		exc_type, exc_value, exc_traceback = sys.exc_info()
-		traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
-		if e.args[0] != 1062:
+		if e.args[0] == 1062:
+			print("duplicate data",command,data)
+		else:
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
 			return False
 	except Exception as e:
 		exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -208,9 +212,8 @@ def parse_album_page(db,albumid):
 	albumName=""
 	if elem is not None:
 		albumName=elem.text
-		print albumName
 	else:
-		sys.stderr.write("album %d no name\n" % artistid)
+		sys.stderr.write("album %d no name\n" % albumid)
 		raise BaseException
 	xmlUrl2="http://www.xiami.com/song/playlist/id/%d/type/1" % albumid
 	htmltext = session.get(xmlUrl2).text
@@ -224,7 +227,11 @@ def parse_album_page(db,albumid):
 		strid=htmltext[cur+len("<songId>"):end]
 		songslist.append( (int(strid),albumid,track_id) )
 		cur=htmltext.find("<songId>",end)
-
+	cur= htmltext.find("<artistId>")
+	if cur==-1:
+		sys.stderr.write("album %d no artist\n" % albumid)
+	else:
+		artist=htmltext[cur+len("<artistId>"):htmltext.find("</artistId>",cur)]
 	print ("album: %s, play= %d , comment= %d" % (albumName,play_cnt,comment_cnt))
 	#write album and album-artist pair
 	if not sqlwrite(db,"insert into album(id,name,description,pic,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s,%s)",(albumid,albumName,des,picurl,play_cnt,comment_cnt)):
@@ -285,7 +292,6 @@ def parse_artist_page(db,artistid):
 	artistName=""
 	if elem is not None:
 		artistName=elem.text
-		print artistName
 	else:
 		sys.stderr.write("artist %d no name\n" % artistid)
 		raise BaseException
@@ -405,6 +411,13 @@ def parse_album_page2(albumid):
 		strid=htmltext[cur+len("<songId>"):end]
 		print strid
 		cur=htmltext.find("<songId>",end)
+	#<artistId>1390</artistId>
+	cur= htmltext.find("<artistId>")
+	if cur==-1:
+		raise BaseException
+	else:
+		artist=htmltext[cur+len("<artistId>"):htmltext.find("</artistId>",cur)]
+		print artist
 	#print ("album: %s, play= %d , comment= %d" % (albumName,play_cnt,comment_cnt))
 
 
