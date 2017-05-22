@@ -8,7 +8,10 @@ import sys
 if len(sys.argv)==2:
        if sys.argv[1]=='close':
                CrawlerCore.close_mode=True
-
+if len(sys.argv)==2:
+       if sys.argv[1]=='recrawl':
+               CrawlerCore.close_mode=True
+               CrawlerCore.recrawl()		
 CrawlerCore.put_song(380246)#小手拉大手
 CrawlerCore.put_song(130762)#后来
 CrawlerCore.put_song(378181)#爱我别走

@@ -7,6 +7,7 @@ import os.path
 import time
 
 close_mode=False
+recrawl_mode=False
 song_id_set=set()
 song_id_lock=threading.Lock()
 
@@ -90,6 +91,25 @@ def init_cache():
 	print("Read cache done")
 init_cache()
 
+def recrawl():
+	recrawl_mode=True
+	for line in file_bad_task:
+		kv=line.split()
+		mtype=int(kv[0])
+		mid=int(kv[1])
+		if mtype==0:
+			if mid in song_id_set:
+				song_id_set.remove(mid)
+			enqueue_song(mid)
+		elif mtype==1:
+			if mid in album_id_set:
+				album_id_set.remove(mid)
+			enqueue_album(mid)
+		elif mtype==2:
+			if mid in artist_id_set:
+				artist_id_set.remove(mid)
+			enqueue_artist(mid)
+		
 def register_song(xiami_id,play_cnt,url):
 	global out_url_file,out_url_file_time,count,filecount
 	#write some DB

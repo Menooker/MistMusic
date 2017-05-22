@@ -138,20 +138,24 @@ def parse_song_page(db,songid):
 def parse_album_page(db,albumid):
 	if CrawlerCore.check_xiami_album(albumid):
 		return
-	tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/1" % albumid)
-	#获取xml的根节点
-	root = tree.getroot()
+	albumName=""
+	artist=""
+	album_logo=""
+	if not CrawlerCore.recrawl_mode:
+		tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/1" % albumid)
+		#获取xml的根节点
+		root = tree.getroot()
 
-	#下面用来获取歌曲信息
-	albumName =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:album_name',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
-	artist = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:artistId',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
-	album_logo = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:album_logo',namespaces={"xm": 'http://xspf.org/ns/0/'})
-	songs =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:songId',namespaces={"xm": 'http://xspf.org/ns/0/'})
-	songslist = [0] * len(songs)
-	for i in range(len(songs)):
-		songslist[i]=(int(songs[i].text),albumid,i+1)
-		#write song-album pair
-		CrawlerCore.enqueue_song(songslist[i][0])
+		#下面用来获取歌曲信息
+		albumName =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:album_name',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
+		artist = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:artistId',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
+		album_logo = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:album_logo',namespaces={"xm": 'http://xspf.org/ns/0/'})
+		songs =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:songId',namespaces={"xm": 'http://xspf.org/ns/0/'})
+		songslist = [0] * len(songs)
+		for i in range(len(songs)):
+			songslist[i]=(int(songs[i].text),albumid,i+1)
+			#write song-album pair
+			CrawlerCore.enqueue_song(songslist[i][0])
 
 	session = requests.Session()
 	session.headers = {
@@ -198,7 +202,8 @@ def parse_album_page(db,albumid):
 		picurl= elem.attrib["src"]
 	else:
 		sys.stderr.write("album %d no photo\n" % albumid)
-
+	if CrawlerCore.recrawl_mode:
+		print(1)
 	print ("album: %s, play= %d , comment= %d" % (albumName,play_cnt,comment_cnt))
 	#write album and album-artist pair
 	if not sqlwrite(db,"insert into album(id,name,description,pic,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s,%s)",(albumid,albumName,des,picurl,play_cnt,comment_cnt)):
@@ -213,6 +218,7 @@ def parse_album_page(db,albumid):
 def parse_artist_page(db,artistid):
 	if CrawlerCore.check_xiami_artist(artistid):
 		return
+	
 	tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/2" % artistid)
 	#获取xml的根节点
 	root = tree.getroot()
