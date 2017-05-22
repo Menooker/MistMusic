@@ -41,7 +41,7 @@ def sqlwrite_batch(db,command,data):
 		db.commit()
 	except MySQLdb.IntegrityError as e:	
 		if e.args[0] == 1062:
-			print("duplicate data",command,data)
+			print("duplicate data")
 		else:
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
@@ -61,7 +61,7 @@ def sqlwrite(db,command,data):
 		db.commit()
 	except MySQLdb.IntegrityError as e:
 		if e.args[0] == 1062:
-			print("duplicate data",command,data)
+			print("duplicate data")
 		else:
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_exception(exc_type, exc_value, exc_traceback,limit=None, file=sys.stderr)
@@ -226,6 +226,8 @@ def parse_album_page(db,albumid):
 			break
 		strid=htmltext[cur+len("<songId>"):end]
 		songslist.append( (int(strid),albumid,track_id) )
+		if not CrawlerCore.close_mode:
+			CrawlerCore.enqueue_song(int(strid))
 		cur=htmltext.find("<songId>",end)
 	cur= htmltext.find("<artistId>")
 	if cur==-1:
@@ -293,8 +295,13 @@ def parse_artist_page(db,artistid):
 	if elem is not None:
 		artistName=elem.text
 	else:
-		sys.stderr.write("artist %d no name\n" % artistid)
-		raise BaseException
+		elem=tree.find('.//div[@id="Glory"]/div/div/div/h1')
+		if elem is not None:
+			artistName=elem.text
+			print artistName
+		else:
+			sys.stderr.write("artist %d no name\n" % artistid)
+			raise BaseException
 	#use json to get the count
 	url2="http://www.xiami.com/count/getplaycount?id=%d&type=artist"%artistid
 	htmltext = session.get(url2).text
@@ -304,6 +311,20 @@ def parse_artist_page(db,artistid):
 		play_cnt=int(data["plays"])
 	else:
 		sys.stderr.write("artist %d no playcount\n" % artistid)
+	#set songs
+	if not CrawlerCore.close_mode:
+		xmlUrl2="http://www.xiami.com/song/playlist/id/%d/type/2" % albumid
+		htmltext = session.get(xmlUrl2).text
+		cur= htmltext.find("<songId>")
+		track_id=0
+		while cur != -1:
+			track_id+=1
+			end = htmltext.find("</songId>",cur)
+			if end==-1 :
+				break
+			strid=htmltext[cur+len("<songId>"):end]
+			CrawlerCore.enqueue_song(int(strid))
+			cur=htmltext.find("<songId>",end)
 	print ("artist: %s, play= %d , comment= %d" % (artistName,play_cnt,comment_cnt))
 	if not sqlwrite(db,"insert into artist(id,name,description,pic,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s,%s)",(artistid,artistName,des,picurl,play_cnt,comment_cnt)):
 		return 2
@@ -430,35 +451,19 @@ def artist_test(artistid):
 	xmlUrl="http://www.xiami.com/artist/"+str(artistid)
 	htmltext = session.get(xmlUrl).text
 	tree = etree.HTML( htmltext);
-	elem=tree.find(".//div[@class=\"record\"]")
-	des=""
+	elem=tree.find('.//div[@id="title"]/h1')
+	artistName=""
 	if elem is not None:
-		des=h.unescape(etree.tostring(elem))
-		des=html2str(des[des.find(">")+1:])
+		artistName=elem.text
 	else:
-		sys.stderr.write("artist %d no description\n" % artistid)
-	elem=tree.find('.//ul[@class="clearfix"]/li/a[@href="#wall"]')
-	comment_cnt=0
-	if elem is not None:
-		tex=elem.text
-		comment_cnt=int(tex)
-	else:
-		sys.stderr.write("artist %d no commentcount\n" % artistid)
-	elem=tree.find('.//div[@id="artist_photo"]/a/img')
-	picurl=""
-	if elem is not None:
-		picurl= elem.attrib["src"]
-	else:
-		sys.stderr.write("artist %d no photo\n" % albumid)
-	url2="http://www.xiami.com/count/getplaycount?id=%d&type=artist"%artistid
-	htmltext = session.get(url2).text
-	data=json.loads(htmltext)
-	play_cnt=0
-	if data["status"]=="ok":
-		play_cnt=int(data["plays"])
-	else:
-		sys.stderr.write("artist %d no playcount\n" % artistid)
+		elem=tree.find('.//div[@id="Glory"]/div/div/div/h1')
+		if elem is not None:
+			artistName=elem.text
+			print artistName
+		else:
+			sys.stderr.write("artist %d no name\n" % artistid)
+			raise BaseException
 
 #aaa()
 #parse_album_page2(421981)
-#artist_test(3110)
+#artist_test(2758)

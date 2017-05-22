@@ -21,6 +21,7 @@ file_song_queue=0#open("song_queue.txt","a+")
 file_song_queue_head=0#open("song_queue.txt","a+")
 file_read_queue=0
 file_bad_task=open("outdir/bad_task.txt","a+")
+file_bad_task_done=open("outdir/bad_task_done.txt","a+")
 artist_file=0
 album_file=0
 
@@ -93,10 +94,19 @@ init_cache()
 
 def recrawl():
 	recrawl_mode=True
+	close_mode=True
+	done_kv=set()
+	for line in file_bad_task_done:
+		kv=line.split()
+		mtype=int(kv[0])
+		mid=int(kv[1])
+		done_kv.add((mtype,mid))
 	for line in file_bad_task:
 		kv=line.split()
 		mtype=int(kv[0])
 		mid=int(kv[1])
+		if (mtype,mid) in done_kv:
+			continue
 		if mtype==0:
 			if mid in song_id_set:
 				song_id_set.remove(mid)
@@ -200,6 +210,9 @@ def done_song(xiami_id):
 	with queue_lock:
 		file_song_queue_head.write("%d\n" % xiami_id)
 		file_song_queue_head.flush()
+		if recrawl_mode:
+			file_bad_task_done.write("0 %d\n" % xiami_id)
+			file_bad_task_done.flush()
 
 def cancel():
 	global is_canceled
@@ -218,7 +231,9 @@ def done_album(xiami_id):
 	with queue_lock:
 		album_file.write("%d\n" % xiami_id)
 		album_file.flush()
-
+		if recrawl_mode:
+			file_bad_task_done.write("1 %d\n" % xiami_id)
+			file_bad_task_done.flush()
 def enqueue_artist(xiami_id):
 	if check_xiami_artist(xiami_id):
 		return
@@ -232,6 +247,9 @@ def done_artist(xiami_id):
 	with queue_lock:
 		artist_file.write("%d\n" % xiami_id)
 		artist_file.flush()
+		if recrawl_mode:
+			file_bad_task_done.write("2 %d\n" % xiami_id)
+			file_bad_task_done.flush()
 def done_task(t):
 	with queue_lock:
 		if t in working_queue:
@@ -240,9 +258,10 @@ def done_task(t):
 def bad_task(t):
 	if t==0:
 		return
-	done_proc=[done_song,done_album,done_artist]
-	done_proc[t[0]](t[1])
-	with bad_task_lock:	
-		file_bad_task.write("%d %d\n" % t)
-		file_bad_task.flush()
+	if not recrawl_mode:
+		done_proc=[done_song,done_album,done_artist]
+		done_proc[t[0]](t[1])
+		with bad_task_lock:	
+			file_bad_task.write("%d %d\n" % t)
+			file_bad_task.flush()
 
