@@ -141,7 +141,8 @@ def parse_album_page(db,albumid):
 	albumName=""
 	artist=""
 	album_logo=""
-	if not CrawlerCore.recrawl_mode:
+	songslist = []
+	if False:
 		tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/1" % albumid)
 		#获取xml的根节点
 		root = tree.getroot()
@@ -202,8 +203,27 @@ def parse_album_page(db,albumid):
 		picurl= elem.attrib["src"]
 	else:
 		sys.stderr.write("album %d no photo\n" % albumid)
-	if CrawlerCore.recrawl_mode:
-		print(1)
+
+	elem=tree.find('.//div[@id="title"]/h1')
+	albumName=""
+	if elem is not None:
+		albumName=elem.text
+		print albumName
+	else:
+		raise BaseException
+	xmlUrl2="http://www.xiami.com/song/playlist/id/%d/type/1" % albumid
+	htmltext = session.get(xmlUrl2).text
+	cur= htmltext.find("<songId>")
+	track_id=0
+	while cur != -1:
+		track_id+=1
+		end = htmltext.find("</songId>",cur)
+		if end==-1 :
+			break
+		strid=htmltext[cur+len("<songId>"):end]
+		songslist.append( (int(strid),albumid,track_id) )
+		cur=htmltext.find("<songId>",end)
+
 	print ("album: %s, play= %d , comment= %d" % (albumName,play_cnt,comment_cnt))
 	#write album and album-artist pair
 	if not sqlwrite(db,"insert into album(id,name,description,pic,play_cnt,comment_cnt) values(%s,%s,%s,%s,%s,%s)",(albumid,albumName,des,picurl,play_cnt,comment_cnt)):
@@ -224,12 +244,13 @@ def parse_artist_page(db,artistid):
 	root = tree.getroot()
 
 	#下面用来获取歌曲信息
-	artistName = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:singers',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
-	songs =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:songId',namespaces={"xm": 'http://xspf.org/ns/0/'})
-	songslist = [0] * len(songs)
-	for i in range(min(len(songs),30)):
-		songslist[i]=int(songs[i].text)
-		CrawlerCore.enqueue_song(songslist[i])
+	if False:
+		artistName = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:singers',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
+		songs =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:songId',namespaces={"xm": 'http://xspf.org/ns/0/'})
+		songslist = [0] * len(songs)
+		for i in range(min(len(songs),30)):
+			songslist[i]=int(songs[i].text)
+			CrawlerCore.enqueue_song(songslist[i])
 
 	session = requests.Session()
 	session.headers = {
@@ -259,6 +280,13 @@ def parse_artist_page(db,artistid):
 		picurl= elem.attrib["src"]
 	else:
 		sys.stderr.write("artist %d no photo\n" % albumid)
+	elem=tree.find('.//div[@id="title"]/h1')
+	artistName=""
+	if elem is not None:
+		artistName=elem.text
+		print artistName
+	else:
+		raise BaseException
 	#use json to get the count
 	url2="http://www.xiami.com/count/getplaycount?id=%d&type=artist"%artistid
 	htmltext = session.get(url2).text
@@ -357,46 +385,24 @@ def parse_album_page2(albumid):
 	xmlUrl="http://www.xiami.com/album/"+str(albumid)
 	htmltext = session.get(xmlUrl).text
 	tree = etree.HTML( htmltext);
-	elem=tree.find(".//span[@property=\"v:summary\"]/p")
-	des=""
-	if elem is not None:
-		des=h.unescape(etree.tostring(elem))
-		des=html2str(des[des.find(">")+1:])
-	else:
-		elem=tree.find('.//span[@property="v:summary"]')
-		if elem is not None:
-			des=h.unescape(etree.tostring(elem))
-			des=html2str(des[des.find(">")+1:])
-			print des
-		else:
-			sys.stderr.write("album %d no description\n" % albumid)
-	elem=tree.find(".//em[@id=\"play_count_num\"]")
-	play_cnt=0
-	if elem is not None:
-		tex= etree.tostring(elem)
-		tex= tex[tex.find(">")+1:]
-		tail=tex.find("<")
-		if tail!=-1:
-			tex= tex[:tail-1]
-		play_cnt=int(tex)
-	else:
-		sys.stderr.write("album %d no playcount\n" % albumid)
-	elem=tree.find(".//i[@property=\"v:count\"]")
-	comment_cnt=0
-	if elem is not None:
-		tex=elem.text
-		comment_cnt=int(tex)
-	else:
-		sys.stderr.write("album %d no commentcount\n" % albumid)
 
-	elem=tree.find('.//div[@id="album_cover"]/a/img')
-	picurl=""
+	elem=tree.find('.//div[@id="title"]/h1')
+	albumName=""
 	if elem is not None:
-		picurl= elem.attrib["src"]
-		print picurl
+		albumName=elem.text
+		print albumName
 	else:
-		sys.stderr.write("artist %d no photo\n" % albumid)
-
+		raise BaseException
+	xmlUrl2="http://www.xiami.com/song/playlist/id/%d/type/1" % albumid
+	htmltext = session.get(xmlUrl2).text
+	cur= htmltext.find("<songId>")
+	while cur != -1:
+		end = htmltext.find("</songId>",cur)
+		if end==-1 :
+			break
+		strid=htmltext[cur+len("<songId>"):end]
+		print strid
+		cur=htmltext.find("<songId>",end)
 	#print ("album: %s, play= %d , comment= %d" % (albumName,play_cnt,comment_cnt))
 
 
@@ -439,5 +445,5 @@ def artist_test(artistid):
 		sys.stderr.write("artist %d no playcount\n" % artistid)
 
 #aaa()
-#parse_album_page2(10061)
+#parse_album_page2(421981)
 #artist_test(3110)
