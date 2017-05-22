@@ -238,13 +238,13 @@ def parse_album_page(db,albumid):
 def parse_artist_page(db,artistid):
 	if CrawlerCore.check_xiami_artist(artistid):
 		return
-	
-	tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/2" % artistid)
-	#获取xml的根节点
-	root = tree.getroot()
-
-	#下面用来获取歌曲信息
 	if False:
+		tree = etree.parse("http://www.xiami.com/song/playlist/id/%d/type/2" % artistid)
+		#获取xml的根节点
+		root = tree.getroot()
+
+		#下面用来获取歌曲信息
+	
 		artistName = root.xpath('/xm:playlist/xm:trackList/xm:track/xm:singers',namespaces={"xm": 'http://xspf.org/ns/0/'})[0].text
 		songs =  root.xpath('/xm:playlist/xm:trackList/xm:track/xm:songId',namespaces={"xm": 'http://xspf.org/ns/0/'})
 		songslist = [0] * len(songs)
