@@ -210,6 +210,7 @@ def parse_album_page(db,albumid):
 		albumName=elem.text
 		print albumName
 	else:
+		sys.stderr.write("album %d no name\n" % artistid)
 		raise BaseException
 	xmlUrl2="http://www.xiami.com/song/playlist/id/%d/type/1" % albumid
 	htmltext = session.get(xmlUrl2).text
@@ -286,6 +287,7 @@ def parse_artist_page(db,artistid):
 		artistName=elem.text
 		print artistName
 	else:
+		sys.stderr.write("artist %d no name\n" % artistid)
 		raise BaseException
 	#use json to get the count
 	url2="http://www.xiami.com/count/getplaycount?id=%d&type=artist"%artistid
